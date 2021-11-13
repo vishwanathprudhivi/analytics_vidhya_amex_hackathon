@@ -1,4 +1,4 @@
-mode = 'docker container'
+mode = 'local'
 
 if mode == 'docker container':
     RAW_TRAIN_PATH = '/home/code/data/train_go05W65.csv'

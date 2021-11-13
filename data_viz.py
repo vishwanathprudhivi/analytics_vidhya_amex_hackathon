@@ -5,11 +5,11 @@ import pandas_profiling
 import seaborn as sns
 
 #import user defined libraries
-from constants import TRAIN_PATH,TEST_PATH,TRAIN_REPORT_PATH,TEST_REPORT_PATH
+from constants import PROCESSED_TRAIN_PATH,PROCESSED_TEST_PATH,TRAIN_REPORT_PATH,TEST_REPORT_PATH
 
 #load data
-train_df = pd.read_csv(TRAIN_PATH)
-test_df = pd.read_csv(TEST_PATH)
+train_df = pd.read_csv(PROCESSED_TRAIN_PATH)
+test_df = pd.read_csv(PROCESSED_TEST_PATH)
 
 #create a profile report for the data sets
 train_report = pandas_profiling.ProfileReport(train_df, title="Train Data Report")
