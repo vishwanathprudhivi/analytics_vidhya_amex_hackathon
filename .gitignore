@@ -1,2 +1,3 @@
 #ignore data folder which we don't want to include in our code repository
 data
+reports
