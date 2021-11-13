@@ -10,6 +10,9 @@ import xgboost as xgb
 import random
 from sklearn.datasets import make_classification
 from sklearn.neighbors import NearestNeighbors
+from skmultilearn.adapt import MLkNN
+from scipy.sparse import csr_matrix, lil_matrix
+import catboost
 
 #import user defined libraries
 from constants import PROCESSED_TRAIN_PATH,PROCESSED_TEST_PATH,RAW_TEST_PATH,PREDICTION_FILE_PATH
@@ -19,7 +22,7 @@ np.random.seed(2021)
 
 train_df  = pd.read_csv(PROCESSED_TRAIN_PATH)
 
-feature_cols = ['age', 'vintage', 'is_active', , 'current_P16',
+feature_cols = ['age', 'vintage', 'is_active', 'current_P16',
        'current_P13', 'current_P20', 'current_P11', 'current_P8',
        'current_P17', 'current_P21', 'current_P12', 'current_P10',
        'current_P19', 'current_P2', 'current_P00', 'current_P18',
@@ -160,6 +163,14 @@ def MLSMOTE(X,y, n_sample):
     target = pd.concat([y, target], axis=0)
     return new_X, target
 
+def get_model_mlknn(x_train,y_train):
+    model = MLkNN(k=10)
+    # Note that this classifier can throw up errors when handling sparse matrices.
+    #x_train = lil_matrix(x_train).toarray()
+    #y_train = lil_matrix(y_train).toarray()
+    # train
+    model.fit(np.array(x_train), np.array(y_train))
+    return model
 
 def get_model_xgb(x_train,y_train):
     # create XGBoost instance with default hyper-parameters
@@ -189,13 +200,27 @@ def get_model_dl(input_shape,output_shape,x_train,y_train):
 x_sub, y_sub = get_minority_instace(x_train, y_train)           
 x_res,y_res = MLSMOTE(x_sub, y_sub, 500)
 
+mlknn_model = get_model_mlknn(x_train,y_train)
+accuracy_score(y_val,mlknn_model.predict(lil_matrix(x_val).toarray()))
+
+xgb_model = get_model_xgb(x_train,y_train)
+accuracy_score(y_val,xgb_model.predict(x_val))
+
 dl_model = get_model_dl(len(feature_cols),len(target_cols),x_train,y_train)
 accuracy_score(y_val,dl_model.predict(x_val).round())
 
 x_test = pd.read_csv(PROCESSED_TEST_PATH)
 result = dl_model.predict(x_test[feature_cols])
 
-idxs = np.argsort(-1*result)
+result_2 = xgb_model.predict_proba(x_test[feature_cols])
+
+preds_cal = []
+for item in result_2:
+    preds_cal.append( [local_item[1] for local_item in item] )
+
+
+idxs = np.argsort(-1*(0.8*result+0.2*np.array(preds_cal).T))
+
 preds = []
 for row in idxs:
     prods = []
@@ -206,3 +231,4 @@ for row in idxs:
 customer_ids = pd.read_csv(RAW_TEST_PATH)
 out_df = pd.concat([customer_ids['Customer_ID'],pd.Series(preds,name='Product_Holding_B2')],axis = 1)
 out_df.to_csv(PREDICTION_FILE_PATH,index = False)
+
