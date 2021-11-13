@@ -35,7 +35,7 @@ def prepare_data(data_type = 'train',
         print('future_products data shape {}'.format(future_products.shape))
 
         #get dummies for categorical features
-        ohe_encoder = OneHotEncoder(handle_unknown='ignore',sparse = False).fit(df[categorical_features])
+        ohe_encoder = OneHotEncoder(handle_unknown='ignore',sparse = False, drop = 'first').fit(df[categorical_features])
         categorical_features_df = pd.DataFrame(ohe_encoder.transform(df[categorical_features]),columns = ohe_encoder.get_feature_names_out(categorical_features))
         print('categorical_features_df data shape {}'.format(categorical_features_df.shape))
 
