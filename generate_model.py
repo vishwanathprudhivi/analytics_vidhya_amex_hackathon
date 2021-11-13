@@ -12,9 +12,9 @@ import xgboost as xgb
 from constants import PROCESSED_TRAIN_PATH,PROCESSED_TEST_PATH,RAW_TEST_PATH,PREDICTION_FILE_PATH
 
 train_df  = pd.read_csv(PROCESSED_TRAIN_PATH)
-
-feature_cols = ['age', 'vintage', 'is_active', 'gender_Male', 'city_category_C2',
-       'customer_category_S2', 'current_P16',
+#'gender_Male', 'city_category_C2',
+       'customer_category_S2'
+feature_cols = ['age', 'vintage', 'is_active', , 'current_P16',
        'current_P13', 'current_P20', 'current_P11', 'current_P8',
        'current_P17', 'current_P21', 'current_P12', 'current_P10',
        'current_P19', 'current_P2', 'current_P00', 'current_P18',
@@ -40,26 +40,23 @@ def get_model_xgb(x_train,y_train):
 def get_model_dl(input_shape,output_shape,x_train,y_train):
     model = tf.keras.Sequential()
     model.add(layers.Input(input_shape))
-    model.add(layers.Dense(128,activation = 'relu'))
-    model.add(layers.Dense(128,activation = 'relu'))
-    model.add(layers.Dense(64,activation = 'relu'))
-    model.add(layers.Dense(32,activation = 'relu'))
+    model.add(layers.Dense(128,activation = tf.keras.layers.LeakyReLU(alpha=0.01)))
+    model.add(layers.Dense(128,activation = tf.keras.layers.LeakyReLU(alpha=0.01)))
+    model.add(layers.Dense(64,activation = tf.keras.layers.LeakyReLU(alpha=0.01)))
+    model.add(layers.Dense(32,activation = tf.keras.layers.LeakyReLU(alpha=0.01)))
     model.add(layers.Dense(output_shape,activation = 'sigmoid'))
-    model.compile(optimizer = 'nadam',loss = tf.nn.sigmoid_cross_entropy_with_logits(), metrics = get_minimal_multiclass_metrics())
+    model.compile(optimizer = 'nadam',loss = 'binary_crossentropy', metrics = get_minimal_multiclass_metrics())
     history = model.fit(x_train, y_train,
                         batch_size = 100, nb_epoch= 10,
                         verbose=1, validation_data=(x_val, y_val),
                         shuffle = True)
     return model
 
-model = get_model_xgb(x_train,y_train)
-accuracy_score(y_val,model.predict(x_val))
-
+#model = get_model_xgb(x_train,y_train)
+#accuracy_score(y_val,model.predict(x_val))
 
 dl_model = get_model_dl(len(feature_cols),len(target_cols),x_train,y_train)
 accuracy_score(y_val,dl_model.predict(x_val).round())
-
-
 
 x_test = pd.read_csv(PROCESSED_TEST_PATH)
 result = dl_model.predict(x_test[feature_cols])
@@ -71,23 +68,6 @@ for row in idxs:
     for idx in row[:3]:
         prods.append(target_cols[idx].replace('future_',''))
     preds.append(prods)
-
-#result = result.round()
-'''
-preds = []
-for row in result:
-    if np.sum(row) > 0:
-        prods = []
-        for i,v in enumerate(row):
-            if v==1:
-                prods.append(target_cols[i].replace('future_',''))
-        if len(prods)>3:
-            preds.append(prods[:3])
-        else:
-            preds.append(str(prods))
-    else:
-        preds.append(['P8'])
-'''
 
 customer_ids = pd.read_csv(RAW_TEST_PATH)
 out_df = pd.concat([customer_ids['Customer_ID'],pd.Series(preds,name='Product_Holding_B2')],axis = 1)
