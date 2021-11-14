@@ -14,6 +14,7 @@ from skmultilearn.adapt import MLkNN
 from scipy.sparse import csr_matrix, lil_matrix
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
 
 #import user defined libraries
 from constants import PROCESSED_TRAIN_PATH,PROCESSED_TEST_PATH,RAW_TEST_PATH,PREDICTION_FILE_PATH
@@ -69,10 +70,11 @@ def get_model_dl(input_shape,output_shape,x_train,y_train):
     return model
 
 def get_ovr_model(x_train,y_train):
-    estimator = RandomForestClassifier()
+    estimator = LogisticRegression(solver = 'newton-cg')
     model = OneVsRestClassifier(estimator)
     model.fit(x_train, y_train)
     return model
+
 
 #get predictions on validation dataset
 
@@ -83,6 +85,7 @@ dl_model = get_model_dl(len(feature_cols),len(target_cols),x_train,y_train)
 accuracy_score(y_val,dl_model.predict(x_val).round())
 
 ovr_model = get_ovr_model(x_train,y_train)
+accuracy_score(y_train,ovr_model.predict(x_train).round())
 accuracy_score(y_val,ovr_model.predict(x_val).round())
 
 #get ensemble predictions on validation dataset
@@ -95,8 +98,8 @@ for item in val_result_1:
 val_result_2 = ovr_model.predict_proba(x_val)
 
 
-ensemble_preds_val = (0.1*np.array(preds_cal_0).T + 0.1*np.array(dl_model.predict(x_val)) + 0.8*val_result_2)
-ensemble_preds_val = np.where(ensemble_preds_val >= 0.5, 1, 0)
+ensemble_preds_val = (0.8*np.array(preds_cal_0).T + 0.1*np.array(dl_model.predict(x_val)) + 0.1*val_result_2)
+ensemble_preds_val = np.where(ensemble_preds_val >= 0.33, 1, 0)
 accuracy_score(y_val,ensemble_preds_val)
 
 #get predictions on test dataset
@@ -112,7 +115,8 @@ for item in result_1:
 result_2 = ovr_model.predict_proba(x_test[feature_cols])
 
 #ensemble predictions where we weight predictions from each model.
-ensemble_preds = (0.1*result_0 + 0.1*np.array(preds_cal_0).T + 0.8*result_2)
+ensemble_preds = (0.8*result_0 + 0.1*np.array(preds_cal_0).T + 0.1*result_2)
+ensemble_preds_val = np.where(ensemble_preds_val >= 0.33, 1, ensemble_preds_val)
 idxs = np.argsort(-1*ensemble_preds)
 
 #convert predicted probabilities into label sets per predicted row
@@ -121,7 +125,7 @@ for row in idxs:
     prods = []
     for idx in row[:3]:
         prods.append(target_cols[idx].replace('future_',''))
-    preds.append(prods)
+    preds.append(prods) 
 
 #load customer ids and concat with predicted labels. finally save to disk
 customer_ids = pd.read_csv(RAW_TEST_PATH)
